@@ -1,14 +1,43 @@
-name: Deploy to GitHub Pages
+name: Build & Deploy Astro to GitHub Pages
+
 on:
   push:
     branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # 1) Compila el sitio (output => ./dist)
       - uses: withastro/action@v2
         with:
-          node-version: 20          # versión LTS
-          deploy-branch: gh-pages   # rama publicada
+          node-version: 20          # o 18 LTS
+          path: .                   # raíz del proyecto
+
+      # 2) Sube el artifact para Pages
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: ./dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      # 3) Publica el artifact
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v2
