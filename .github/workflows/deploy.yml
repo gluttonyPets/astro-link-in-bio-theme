@@ -1,43 +1,48 @@
-name: Build & Deploy Astro to GitHub Pages
+name: Build & Deploy Astro → GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main]          # cada push a main publica
 
 permissions:
   contents: read
   pages: write
   id-token: write
 
+concurrency:
+  group: "pages"              # evita despliegues simultáneos
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      # 1) Clona el repo
       - uses: actions/checkout@v4
 
-      # 1) Compila el sitio (output => ./dist)
-      - uses: withastro/action@v2
+      # 2) Prepara Node 20 con caché de npm
+      - uses: actions/setup-node@v4
         with:
-          node-version: 20          # o 18 LTS
-          path: .                   # raíz del proyecto
+          node-version: 20
+          cache: "npm"
 
-      # 2) Sube el artifact para Pages
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v2
+      # 3) Instala dependencias y compila Astro
+      - run: npm ci
+      - run: npm run build        # ⇒ genera ./dist
+
+      # 4) Sube ./dist como artifact para Pages (v3: OK)
+      - uses: actions/upload-pages-artifact@v3
         with:
-          path: ./dist
+          path: dist
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
-      # 3) Publica el artifact
-      - name: Deploy to GitHub Pages
+      # 5) Publica el artifact en GitHub Pages (v4)
+      - uses: actions/deploy-pages@v4
         id: deploy
-        uses: actions/deploy-pages@v2
+
